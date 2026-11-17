@@ -883,6 +883,7 @@ body.mq-playing .rnp-full-screen-button {
 }
 
 #rnp-view.rnp-window-tools-visible .rnp-window-tools,
+#rnp-view .rnp-window-tools:focus-within,
 #rnp-view .rnp-window-tools:hover {
 	opacity: 1;
 	transform: translateY(0);

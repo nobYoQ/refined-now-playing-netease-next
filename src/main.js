@@ -2359,9 +2359,25 @@ const syncRnpPageWindowTools = (view) => {
 	}
 
 	const windowTools = view.querySelector('.rnp-window-tools');
-	view.querySelectorAll('.rnp-window-tool-minimize, .rnp-window-tool-maximize, .rnp-window-tool-close').forEach((button) => {
+	view.querySelectorAll('.rnp-window-tool-maximize, .rnp-window-tool-close').forEach((button) => {
 		button.remove();
 	});
+	if (windowTools && !windowTools.querySelector('.rnp-window-tool-minimize')) {
+		const button = document.createElement('button');
+		button.type = 'button';
+		button.className = 'rnp-window-tool rnp-window-tool-minimize';
+		button.title = '最小化';
+		button.setAttribute('aria-label', '最小化');
+		windowTools.prepend(button);
+	}
+	const minimizeButton = view.querySelector('.rnp-window-tool-minimize');
+	if (minimizeButton && minimizeButton.dataset.rnpMinimizeBound !== 'true') {
+		minimizeButton.dataset.rnpMinimizeBound = 'true';
+		minimizeButton.addEventListener('click', (event) => {
+			suppressEventAndBlur(event);
+			triggerNativeWindowAction('minimize');
+		});
+	}
 	const fullScreenButton = view.querySelector('.rnp-window-tool-fullscreen');
 	fullScreenButton?.setAttribute('title', '全屏');
 	fullScreenButton?.setAttribute('aria-label', '全屏');
@@ -2490,10 +2506,6 @@ const createV3LyricPage = () => {
 		event.preventDefault();
 		event.stopPropagation();
 		dragRnpWindow();
-	});
-	view.querySelector('.rnp-window-tool-minimize')?.addEventListener('click', (event) => {
-		suppressEventAndBlur(event);
-		triggerNativeWindowAction('minimize');
 	});
 	view.querySelector('.rnp-window-tool-maximize')?.addEventListener('click', (event) => {
 		suppressEventAndBlur(event);
