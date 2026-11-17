@@ -2315,15 +2315,17 @@ const openRnpLyricPageFromNativeEvent = (event) => {
 };
 
 const onNativeNowPlayingTriggerEvent = (event) => {
-	if (event.shiftKey) {
+	if (event.shiftKey || event.button !== 0) {
 		return;
 	}
-	if (!getNativeNowPlayingTrigger(event)) {
+	const trigger = getNativeNowPlayingTrigger(event);
+	if (!trigger) {
 		return;
 	}
 
 	stopNativeNowPlayingEvent(event);
-	if (event.type === 'pointerup' || event.type === 'mouseup' || event.type === 'click') {
+	// Block the native footer background handler, but only open from the record.
+	if (trigger.matches(NATIVE_LYRIC_PAGE_BUTTON_SELECTOR) && event.type === 'click') {
 		openRnpLyricPageFromNativeEvent(event);
 	}
 };
