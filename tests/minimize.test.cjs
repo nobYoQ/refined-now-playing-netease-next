@@ -1,5 +1,22 @@
 const { test, assert, vm, ts, read, load, mainFunction } = require('./helpers.cjs');
 
+test('minimize dispatches the action used by the actual v3 title bar', () => {
+	const actions = [];
+	const store = { getState() {}, subscribe() {}, dispatch: (action) => actions.push(action) };
+	const { dispatchNCMAction } = load('src/ncm-compat.js', {
+		document: { getElementById: () => ({
+			_reactRootContainer: { _internalRoot: { current: { child: { child: { memoizedProps: { store } } } } } },
+		}) },
+	});
+	const minimize = mainFunction('triggerNativeWindowAction', {
+		dispatchNCMAction,
+		getNativeWindowControlButton: () => assert.fail('Must work without the legacy .m-winctrl element'),
+	});
+	assert.equal(minimize('minimize'), true);
+	assert.equal(actions.length, 1);
+	assert.equal(actions[0].type, 'app/minimizeWindow');
+});
+
 test('window tool sync retains and binds minimize exactly once', () => {
 	const buttons = new Map();
 	const makeButton = (className) => {

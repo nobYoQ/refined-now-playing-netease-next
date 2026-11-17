@@ -15,7 +15,7 @@ import { whatsNew } from './whats-new.js';
 import { showContextMenu } from './context-menu.js';
 import { MiniSongInfo } from './mini-song-info.js';
 import { FontSettings } from './font-settings.js';
-import { appendRegisterCall, fetchSongDetailBySongId, getNCMStore, getPlayingSong, getPlayingSongId } from './ncm-compat.js';
+import { appendRegisterCall, dispatchNCMAction, fetchSongDetailBySongId, getNCMStore, getPlayingSong, getPlayingSongId } from './ncm-compat.js';
 import { createRoot } from 'react-dom/client';
 import { V3PlayerControls } from './v3-player-controls.js';
 
@@ -2254,6 +2254,10 @@ const getNativeWindowControlButton = (action) => {
 };
 
 const triggerNativeWindowAction = (action) => {
+	// The v3 title bar dispatches this action; its controls are not .m-winctrl.
+	if (action === 'minimize' && dispatchNCMAction({ type: 'app/minimizeWindow' })) {
+		return true;
+	}
 	const target = getNativeWindowControlButton(action);
 	if (target && clickDomElement(target, getElementCenterPoint(target))) {
 		return true;
