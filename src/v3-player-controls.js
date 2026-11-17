@@ -570,9 +570,16 @@ export function V3PlayerControls(props) {
 		setAudioQuality(getCurrentAudioQuality());
 		setIsFavorite(isCurrentSongLiked());
 	};
+	const accessoryTimers = useRef(new Set());
 	const syncAccessoryStateSoon = () => {
+		accessoryTimers.current.forEach(clearTimeout);
+		accessoryTimers.current.clear();
 		[80, 180, 360, 700].forEach((delay) => {
-			window.setTimeout(syncAccessoryState, delay);
+			const timer = window.setTimeout(() => {
+				accessoryTimers.current.delete(timer);
+				syncAccessoryState();
+			}, delay);
+			accessoryTimers.current.add(timer);
 		});
 	};
 
@@ -598,6 +605,8 @@ export function V3PlayerControls(props) {
 
 		return () => {
 			observer.disconnect();
+			accessoryTimers.current.forEach(clearTimeout);
+			accessoryTimers.current.clear();
 			removeRegisterCall('Load', 'audioplayer', syncAccessoryStateSoon);
 		};
 	}, [pageOpen]);

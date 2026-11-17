@@ -186,7 +186,7 @@ export function Lyrics(props) {
 	}
 
 	const onLyricsUpdate = (e) => {
-		if (!e.detail) {
+		if (!e.detail || !pageOpenRef.current) {
 			return;
 		}
 		if (!isCurrentModeSession()) {
@@ -232,6 +232,9 @@ export function Lyrics(props) {
 		}
 	}, []);
 
+	useEffect(() => {
+		if (pageOpen && window.currentLyrics) onLyricsUpdate({ detail: window.currentLyrics });
+	}, [pageOpen]);
 
 	useEffect(() => { // Recalculate height of each line
 		if (!lyrics) return;
@@ -629,17 +632,26 @@ export function Lyrics(props) {
 	};
 
 	useEffect(() => {
-		containerRef.current.addEventListener("scroll", (e) => {
+		const container = containerRef.current;
+		const onScroll = (e) => {
 			e.stopPropagation();
 			e.preventDefault();
 			return false;
-		}, { passive: false });
-		containerRef.current.addEventListener("wheel", (e) => {
+		};
+		const onContainerWheel = (e) => {
 			e.stopPropagation();
 			e.preventDefault();
 			onWheel(e);
 			return false;
-		}, { passive: false });
+		};
+		container.addEventListener('scroll', onScroll, { passive: false });
+		container.addEventListener('wheel', onContainerWheel, { passive: false });
+		return () => {
+			container.removeEventListener('scroll', onScroll);
+			container.removeEventListener('wheel', onContainerWheel);
+			clearTimeout(exitScrollingModeTimeout.current);
+			clearTimeout(exitOverviewModeScrollingTimeout.current);
+		};
 	}, []);
 
 	useEffect(() => {

@@ -10,14 +10,16 @@ export const useRnpLyricPageOpen = () => {
 
 	useEffect(() => {
 		const syncPageOpen = () => {
-			setPageOpen(isRnpLyricPageOpen());
+			setPageOpen(isRnpLyricPageOpen() && !document.hidden);
 		};
 		window.addEventListener('rnp-lyric-page-opened', syncPageOpen);
 		window.addEventListener('rnp-lyric-page-closed', syncPageOpen);
+		document.addEventListener('visibilitychange', syncPageOpen);
 		syncPageOpen();
 		return () => {
 			window.removeEventListener('rnp-lyric-page-opened', syncPageOpen);
 			window.removeEventListener('rnp-lyric-page-closed', syncPageOpen);
+			document.removeEventListener('visibilitychange', syncPageOpen);
 		};
 	}, []);
 

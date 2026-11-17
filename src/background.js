@@ -3,6 +3,7 @@ import { getGradientFromPalette } from './color-utils';
 import { appendRegisterCall, getIsPlayingFromPlayStateEvent, isPlayerPlaying, removeRegisterCall } from './ncm-compat.js';
 import { useRnpLyricPageOpen } from './rnp-page-state.js';
 import ColorThief from 'colorthief';
+import { loadBackgroundImage } from './background-image.js';
 
 const useState = React.useState;
 const useEffect = React.useEffect;
@@ -11,12 +12,14 @@ const useRef = React.useRef;
 const colorThief = new ColorThief();
 
 export function Background(props) {
+	const pageOpen = useRnpLyricPageOpen();
 	const [type, setType] = useState(props.type ?? 'blur'); // blur, gradient, fluid , solid
 	const [url, setUrl] = useState('');
 	const [staticFluid, setStaticFluid] = useState(true);
 	const image = props.image;
 
 	useEffect(() => {
+		if (!pageOpen) return;
 		const observer = new MutationObserver(() => {
 			if (image.src === url) return;
 			if (image.complete) {
@@ -28,20 +31,28 @@ export function Background(props) {
 			setUrl(image.src);
 		};
 		image.addEventListener('load', onload);
+		if (image.complete) onload();
 		return () => {
 			observer.disconnect();
 			image.removeEventListener('load', onload);
 		}
-	}, [image]);
+	}, [image, pageOpen]);
 
 	useEffect(() => {
-		document.addEventListener('rnp-background-type', (e) => {
+		const onType = (e) => {
 			setType(e.detail.type ?? 'blur');
-		});
-		document.addEventListener('rnp-static-fluid', (e) => {
+		};
+		const onStatic = (e) => {
 			setStaticFluid(e.detail ?? false);
-		});
+		};
+		document.addEventListener('rnp-background-type', onType);
+		document.addEventListener('rnp-static-fluid', onStatic);
+		return () => {
+			document.removeEventListener('rnp-background-type', onType);
+			document.removeEventListener('rnp-static-fluid', onStatic);
+		};
 	}, []);
+	if (!pageOpen) return null;
 	
 	return (
 		<>
@@ -92,15 +103,10 @@ function BlurBackground(props) {
 function GradientBackground(props) {
 	const [gradient, setGradient] = useState('linear-gradient(-45deg, #666, #fff)');
 	useEffect(() => {
-		const image = new Image();
-		image.crossOrigin = 'Anonymous';
-		console.log('loading image');
-		image.onload = () => {
-			console.log('image loaded');
+		return loadBackgroundImage(props.url, (image) => {
 			const palette = colorThief.getPalette(image);
 			setGradient(getGradientFromPalette(palette));
-		};
-		image.src = props.url;
+		});
 	}, [props.url]);
 
 	return (
@@ -149,23 +155,22 @@ function FluidBackground(props) {
 	}, []);
 
 	useEffect(() => {
-		canvas1.current.getContext('2d').filter = 'blur(5px)';
-		canvas2.current.getContext('2d').filter = 'blur(5px)';
-		canvas3.current.getContext('2d').filter = 'blur(5px)';
-		canvas4.current.getContext('2d').filter = 'blur(5px)';
+		const canvases = [canvas1.current, canvas2.current, canvas3.current, canvas4.current];
+		canvases.forEach((canvas) => {
+			canvas.width = canvas.height = 100;
+			canvas.getContext('2d').filter = 'blur(5px)';
+		});
+		return () => canvases.forEach((canvas) => { canvas.width = canvas.height = 0; });
 	}, []);
 
 	useEffect(() => {
-		const image = new Image();
-		image.crossOrigin = 'Anonymous';
-		image.onload = () => {
+		const disposeImage = loadBackgroundImage(props.url, (image) => {
 			const { width, height } = image;
 			canvas1.current.getContext('2d').drawImage(image, 0, 0, width / 2, height / 2, 0, 0, 100, 100);
 			canvas2.current.getContext('2d').drawImage(image, width / 2, 0, width / 2, height / 2, 0, 0, 100, 100);
 			canvas3.current.getContext('2d').drawImage(image, 0, height / 2, width / 2, height / 2, 0, 0, 100, 100);
 			canvas4.current.getContext('2d').drawImage(image, width / 2, height / 2, width / 2, height / 2, 0, 0, 100, 100);
-		};
-		image.src = props.url;
+		});
 		feTurbulence.current.setAttribute('seed', parseInt(Math.random() * 1000));
 		staticFluidStyleRef.current.innerHTML = `
 			body.static-fluid .rnp-background-fluid-rect {
@@ -177,6 +182,7 @@ function FluidBackground(props) {
 				animation-delay: -${parseInt(Math.random() * 60)}s !important;
 			}
 		`;
+		return disposeImage;
 	}, [props.url]);
 
 	const onResize = () => {
@@ -266,7 +272,9 @@ function FluidBackground(props) {
 				if (!pageOpenRef.current || !playState.current) return;
 				//processor.current.analyser.getFloatFrequencyData(processor.current.dataArray);
 				//const max = Math.max(...processor.current.dataArray);
-				loadedPlugins.LibFrontendPlay.currentAudioAnalyser.getFloatFrequencyData(processor.current.dataArray);
+				const analyser = loadedPlugins.LibFrontendPlay.currentAudioAnalyser;
+				if (!analyser) return;
+				analyser.getFloatFrequencyData(processor.current.dataArray);
 				let max = -Infinity;
 				for (let i = 0; i < processor.current.dataArray.length; i++) {
 					if (processor.current.dataArray[i] > max) {

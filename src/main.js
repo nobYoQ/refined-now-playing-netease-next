@@ -119,7 +119,7 @@ const updateCDImage = () => {
 	}
 	
 	const imgDom = document.querySelector('.n-single .cdimg img');
-	if (!imgDom) {
+	if (!imgDom || !imgDom.naturalWidth) {
 		return;
 	}
 
@@ -1685,6 +1685,7 @@ const applyV3LyricPageAlignment = () => {
 	page.style.setProperty('--rnp-v3-side-offset-x', `${sideOffsetX}px`);
 };
 
+let lastV3LyricPageInfo = '';
 const updateV3LyricPageInfo = () => {
 	const page = document.querySelector(`#${RNP_VIEW_ID} .g-single`);
 	if (!page) {
@@ -1700,6 +1701,9 @@ const updateV3LyricPageInfo = () => {
 			}
 		});
 	}
+	const fingerprint = JSON.stringify(info);
+	if (fingerprint === lastV3LyricPageInfo) return;
+	lastV3LyricPageInfo = fingerprint;
 	const commentsButton = page.querySelector('.rnp-info-comments-button');
 	if (commentsButton) commentsButton.disabled = !/^\d+$/.test(info.songId);
 	const headerName = page.querySelector('.g-singlec-hd .wrap .name');
@@ -1789,6 +1793,7 @@ const updateV3LyricPageInfo = () => {
 
 let v3LyricPageUpdateTimer = 0;
 const scheduleV3LyricPageInfoUpdate = () => {
+	if (!document.body.classList.contains(RNP_PAGE_OPEN_CLASS)) return;
 	clearTimeout(v3LyricPageUpdateTimer);
 	v3LyricPageUpdateTimer = window.setTimeout(() => {
 		updateV3LyricPageInfo();
@@ -2430,6 +2435,7 @@ const createV3LyricPage = () => {
 	}
 
 	const view = document.createElement('div');
+	lastV3LyricPageInfo = '';
 	view.id = RNP_VIEW_ID;
 	view.innerHTML = `
 		<div class="rnp-window-topbar">

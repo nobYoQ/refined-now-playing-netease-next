@@ -30,6 +30,7 @@ export function CoverShadow(props) {
 			setUrl(image.src);
 		};
 		image.addEventListener('load', onload);
+		if (image.complete) onload();
 		return () => {
 			observer.disconnect();
 			image.removeEventListener('load', onload);
@@ -48,9 +49,11 @@ export function CoverShadow(props) {
 	}, []);
 
 	useEffect(() => {
-		document.addEventListener('rnp-cover-shadow-type', (e) => {
+		const onShadowType = (e) => {
 			setType(e.detail.type ?? 'colorful');
-		});
+		};
+		document.addEventListener('rnp-cover-shadow-type', onShadowType);
+		return () => document.removeEventListener('rnp-cover-shadow-type', onShadowType);
 	}, []);
 	
 	if (!url) return null;

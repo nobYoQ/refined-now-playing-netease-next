@@ -140,6 +140,7 @@ let currentLyricUpdateToken = Symbol('rnp-lyrics-update');
 let lyricFetchAbortController = null;
 let lastFetchedSongId = '';
 let refreshTimer = 0;
+let processTimer = 0;
 
 const emitProcessedLyrics = async (_rawLyrics, songID = '') => {
 	if (!_rawLyrics || _rawLyrics?.data === -400) {
@@ -170,7 +171,8 @@ const emitProcessedLyrics = async (_rawLyrics, songID = '') => {
 	currentLyricUpdateToken = updateToken;
 
 	const preprocessedLyrics = preProcessLyrics(rawLyrics);
-	setTimeout(async () => {
+	clearTimeout(processTimer);
+	processTimer = setTimeout(async () => {
 		if (currentLyricUpdateToken !== updateToken) {
 			return;
 		}
@@ -223,11 +225,6 @@ const emitProcessedLyrics = async (_rawLyrics, songID = '') => {
 
 		lyrics.hash = `${resolvedSongId}-${cyrb53(processedLyrics.map((line) => line.originalLyric).join('\\'))}`;
 		window.currentLyrics = lyrics;
-		console.group('Update Processed Lyrics');
-		console.log('lyrics', window.currentLyrics.lyrics);
-		console.log('contributors', window.currentLyrics.contributors);
-		console.log('hash', window.currentLyrics.hash);
-		console.groupEnd();
 		document.dispatchEvent(new CustomEvent('lyrics-updated', { detail: window.currentLyrics }));
 	}, 0);
 
