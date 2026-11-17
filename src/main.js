@@ -831,14 +831,27 @@ const navigateWithinApp = (href) => {
 const openCommentsFromNativeUI = () => {
 	const songId = getPlayingSongId();
 	if (!/^\d+$/.test(songId)) return false;
-	const target = Array.from(document.querySelectorAll('footer button, footer a, footer [role="button"]'))
+	const target = document.querySelector('footer [data-testid="tid_playbar_comment_btn"]')
+		?? document.querySelector('footer [role="img"][aria-label="comment_number"]')?.closest('button, a, [role="button"]')
+		?? Array.from(document.querySelectorAll('footer button, footer a, footer [role="button"]'))
 		.find((button) => /comment|评论/i.test(getElementDescriptor(button)));
-	if (target) {
+	if (!target) return false;
+	try {
+		// Invoke this button's handler only: an ancestor may just toggle the player.
+		const handler = getReactProps(target)?.onClick;
+		if (typeof handler === 'function') {
+			handler.call(target, createSyntheticNativeEvent(target, 'click'));
+		} else if (typeof target.click === 'function') {
+			target.click();
+		} else {
+			return false;
+		}
 		closeRnpLyricPage();
-		if (invokeReactJumpHandler(target) || clickDomElement(target, getElementCenterPoint(target))) return true;
+		return true;
+	} catch (error) {
+		console.debug('Failed to open native comments', error);
+		return false;
 	}
-	// Song detail includes the comments when a client has no minibar shortcut.
-	return navigateWithinApp(`#/m/song/?id=${songId}`);
 };
 
 const appendLineText = (container, label, className = '') => {
@@ -2494,10 +2507,12 @@ const createV3LyricPage = () => {
 											<div class="info">
 												<div class="alias"></div>
 												<ul class="playfrom"></ul>
+												<div class="rnp-info-actions">
 												<button type="button" class="rnp-info-comments-button" title="查看评论" aria-label="查看评论" disabled>
 													<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-6 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M7 9h10M7 13h7"/></svg>
 												</button>
 												<button type="button" class="rnp-info-more-button" title="更多" aria-label="更多"></button>
+												</div>
 											</div>
 										</div>
 									</div>

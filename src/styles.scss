@@ -1539,6 +1539,7 @@ body.hide-player-controls #rnp-view .rnp-cover-favorite-host {
 }
 
 #rnp-view .g-single-track .g-singlec-ct .n-single .mn .head .inf .info .alias {
+	grid-column: 1 / -1;
 	font-size: 14px;
 	margin-top: 2px;
 	margin-bottom: 14px;
@@ -1553,12 +1554,30 @@ body.hide-player-controls #rnp-view .rnp-cover-favorite-host {
 }
 
 #rnp-view .g-single-track .g-singlec-ct .n-single .mn .head .inf .info ul {
+	grid-column: 1;
+	min-width: 0;
+	width: 100%;
+	max-width: 100%;
 	overflow: hidden;
 }
 
 #rnp-view .g-single-track .g-singlec-ct .n-single .mn .head .inf .info {
 	position: relative;
-	padding-right: 80px;
+	display: grid !important;
+	grid-template-columns: minmax(0, 1fr) auto;
+	column-gap: 12px;
+	width: 100%;
+	min-width: 0;
+	box-sizing: border-box;
+	padding-right: 0;
+}
+
+#rnp-view .info .rnp-info-actions {
+	display: flex;
+	grid-column: 2;
+	grid-row: 2;
+	align-self: start;
+	gap: 8px;
 }
 
 #rnp-view .g-single-track .g-singlec-ct .n-single .mn .head .inf .info ul li {
@@ -1649,10 +1668,14 @@ body.hide-player-controls #rnp-view .rnp-cover-favorite-host {
 
 #rnp-view .g-single-track .g-singlec-ct .n-single .mn .head .inf .info .rnp-info-comments-button,
 #rnp-view .g-single-track .g-singlec-ct .n-single .mn .head .inf .info .rnp-info-more-button {
-	position: absolute;
-	right: 0;
-	top: 50%;
-	transform: translateY(-50%);
+	position: relative;
+	display: inline-flex;
+	top: auto;
+	right: auto;
+	transform: none;
+	align-items: center;
+	justify-content: center;
+	flex: 0 0 30px;
 	width: 30px;
 	height: 30px;
 	border: 0;
@@ -1665,8 +1688,7 @@ body.hide-player-controls #rnp-view .rnp-cover-favorite-host {
 }
 
 #rnp-view .info .rnp-info-comments-button {
-	right: 38px !important;
-
+	right: auto !important;
 	svg {
 		width: 18px;
 		height: 18px;
@@ -1700,7 +1722,7 @@ body.hide-player-controls #rnp-view .rnp-cover-favorite-host {
 }
 
 #rnp-view .g-single-track .g-singlec-ct .n-single .mn .head .inf .info .rnp-info-more-button:active {
-	transform: translateY(-50%) scale(0.96);
+	transform: scale(0.96);
 }
 
 #rnp-view .g-single-track .g-singlec-ct .n-single .mn,
