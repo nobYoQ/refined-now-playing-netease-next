@@ -24,6 +24,7 @@ import { createPortal } from 'react-dom';
 import { ProgressbarPreview } from './progressbar-preview.js';
 import { useRnpLyricPageOpen } from './rnp-page-state.js';
 import { V3Slider } from './v3-slider.js';
+import { getCurrentVolumeFromPlayer, getVolumeFromEventArgs, setPlayerVolume } from './player-volume.js';
 
 const useEffect = React.useEffect;
 const useMemo = React.useMemo;
@@ -46,20 +47,6 @@ const normalizeNumber = (value) => {
 };
 
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-const normalizeVolumeValue = (value) => {
-	const numericValue = Number(value);
-	if (!Number.isFinite(numericValue)) {
-		return null;
-	}
-	if (numericValue >= 0 && numericValue <= 1) {
-		return numericValue;
-	}
-	if (numericValue > 1 && numericValue <= 100) {
-		return numericValue / 100;
-	}
-	return null;
-};
 
 const formatTime = (value) => {
 	const totalSeconds = Math.max(0, Math.floor(normalizeNumber(value)));
@@ -119,24 +106,6 @@ const getCurrentProgressFromPlayer = () => {
 	return 0;
 };
 
-const getCurrentVolumeFromPlayer = () => {
-	try {
-		const playerSettings = JSON.parse(localStorage.getItem('NM_SETTING_PLAYER') || '{}');
-		const volume = [
-			playerSettings?.volume,
-			playerSettings?.vol,
-			playerSettings?.volumeValue,
-		].map(normalizeVolumeValue).find((candidate) => candidate !== null);
-		if (volume !== undefined) {
-			return volume;
-		}
-	} catch (error) {
-		console.debug('Failed to read NM_SETTING_PLAYER.volume', error);
-	}
-
-	return null;
-};
-
 const getInitialVolume = () => {
 	const volume = getCurrentVolumeFromPlayer();
 	if (volume !== null) {
@@ -144,29 +113,6 @@ const getInitialVolume = () => {
 	}
 
 	return 0.5;
-};
-
-const getVolumeFromEventArgs = (...args) => {
-	for (const arg of [...args].reverse()) {
-		const directVolume = normalizeVolumeValue(arg);
-		if (directVolume !== null) {
-			return directVolume;
-		}
-
-		if (arg && typeof arg === 'object') {
-			const nestedVolume = [
-				arg.volume,
-				arg.vol,
-				arg.value,
-				arg.currentVolume,
-			].map(normalizeVolumeValue).find((candidate) => candidate !== null);
-			if (nestedVolume !== undefined) {
-				return nestedVolume;
-			}
-		}
-	}
-
-	return null;
 };
 
 const genAudioPlayerCommand = (audioId, command) => {
@@ -195,18 +141,6 @@ const seekToProgress = (songId, progress) => {
 			genAudioPlayerCommand(normalizedSongId, 'seek'),
 			normalizedProgress,
 		]);
-	}
-};
-
-const setPlayerVolume = (volume) => {
-	const normalizedVolume = clamp(normalizeNumber(volume), 0, 1);
-	if (hasLegacyAdapter()) {
-		legacyNativeCmder._envAdapter.callAdapter('audioplayer.setVolume', () => {}, ['', '', normalizedVolume]);
-		return;
-	}
-
-	if (hasChannelCall()) {
-		channel.call('audioplayer.setVolume', () => {}, ['', '', normalizedVolume]);
 	}
 };
 
@@ -733,7 +667,7 @@ export function V3PlayerControls(props) {
 
 		const onVolumeChange = (...args) => {
 			const nextVolume = getVolumeFromEventArgs(...args) ?? getCurrentVolumeFromPlayer();
-			if (nextVolume !== null) {
+			if (nextVolume !== null && !isVolumeDraggingRef.current) {
 				setVolume(nextVolume);
 			}
 		};
@@ -743,6 +677,7 @@ export function V3PlayerControls(props) {
 		appendRegisterCall('Load', 'audioplayer', onSongLoad);
 		appendRegisterCall('Volume', 'audioplayer', onVolumeChange);
 		window.addEventListener('storage', syncVolumeState);
+		window.addEventListener('rnp-volume-changed', onVolumeChange);
 		const volumeSyncTimer = window.setInterval(syncVolumeState, 700);
 
 		return () => {
@@ -751,6 +686,7 @@ export function V3PlayerControls(props) {
 			removeRegisterCall('Load', 'audioplayer', onSongLoad);
 			removeRegisterCall('Volume', 'audioplayer', onVolumeChange);
 			window.removeEventListener('storage', syncVolumeState);
+			window.removeEventListener('rnp-volume-changed', onVolumeChange);
 			window.clearInterval(volumeSyncTimer);
 		};
 	}, [pageOpen]);
