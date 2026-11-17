@@ -116,6 +116,10 @@ export function parseLyric(
 	roman: string = "",
 	dynamic: string = "",
 ): LyricLine[] {
+	original = normalizeLyricMetadata(original);
+	translated = normalizeLyricMetadata(translated);
+	roman = normalizeLyricMetadata(roman);
+	dynamic = normalizeLyricMetadata(dynamic);
 	if (dynamic.trim().length === 0) {
 		const result: LyricLine[] = parsePureLyric(original).map((v) => ({
 			time: v.time,
@@ -398,7 +402,26 @@ const yrcWordTimeRegexp =
 	/^\((?<time>[0-9]+),(?<duration>[0-9]+),(?<flag>[0-9]+)\)(?<word>[^\(]*)/;
 const timeRegexp = /^\[((?<min>[0-9]+):)?(?<sec>[0-9]+([\.:]([0-9]+))?)\]/;
 const metaTimeRegexp = /^\[((?<min>[0-9]+):)?(?<sec>[0-9]+([\.:]([0-9]+))?)\-(?<discriminator>[0-9]+)\]/; //[00:00.00-1] 作词 : xxx
+// Newer clients embed credits as JSON, optionally after an LRC timestamp.
+export function normalizeLyricMetadata(source: string): string {
+	return source.split('\n').map((line) => {
+		const match = line.trim().match(/^((?:\[[^\]]+\])*)\s*(\{.*\})$/);
+		if (!match) return line;
+		try {
+			const metadata = JSON.parse(match[2]);
+			if (!Array.isArray(metadata.c)) return line;
+			const text = metadata.c.map((part: { tx?: string }) => typeof part?.tx === 'string' ? part.tx : '').join('');
+			const time = Number(metadata.t);
+			const prefix = match[1] || `[00:${(Number.isFinite(time) && time >= 0 ? time / 1000 : 0).toFixed(3)}]`;
+			return text ? `${prefix}${text}` : '';
+		} catch {
+			return line;
+		}
+	}).join('\n');
+}
+
 export function parsePureLyric(lyric: string): LyricPureLine[] {
+	lyric = normalizeLyricMetadata(lyric);
 	const result: LyricPureLine[] = [];
 
 	for (const line of lyric.split("\n")) {
@@ -435,6 +458,7 @@ export function parsePureLyric(lyric: string): LyricPureLine[] {
 }
 
 export function parseUnsyncedLyrics(lyric: string): LyricPureLine[] {
+	lyric = normalizeLyricMetadata(lyric);
 	const result: LyricPureLine[] = [];
 	for (const line of lyric.split("\n")) {
 		let lyric = line.trim();
@@ -465,9 +489,15 @@ export function parseUnsyncedLyrics(lyric: string): LyricPureLine[] {
 export function parsePureDynamicLyric(lyric: string): LyricLine[] {
 	const result: LyricLine[] = [];
 	// 解析逐词歌词
-	for (const line of lyric.trim().split("\n")) {
+	for (const line of normalizeLyricMetadata(lyric).trim().split("\n")) {
 		let tmp = line.trim();
 		const lineMatches = tmp.match(yrcLineRegexp);
+		if (!lineMatches && timeRegexp.test(tmp)) {
+			result.push(...parsePureLyric(tmp).map((line) => ({
+				time: line.time, duration: 0, originalLyric: line.lyric,
+			})));
+			continue;
+		}
 		if (lineMatches) {
 			const time = parseInt(lineMatches.groups?.time || "0");
 			const duration = parseInt(lineMatches.groups?.duration || "0");

@@ -204,7 +204,7 @@ const emitProcessedLyrics = async (_rawLyrics, songID = '') => {
 
 		lyrics.contributors.roles = (rawLyrics?.roles ?? []).filter((role) => {
 			return !(role.artistMetaList?.length === 1 && role.artistMetaList[0]?.artistId === 0);
-		});
+		}).map((role) => ({ ...role }));
 
 		for (let i = 0; i < lyrics.contributors.roles.length; i += 1) {
 			const metaList = JSON.stringify(lyrics.contributors.roles[i].artistMetaList);
