@@ -828,6 +828,19 @@ const navigateWithinApp = (href) => {
 	return true;
 };
 
+const openCommentsFromNativeUI = () => {
+	const songId = getPlayingSongId();
+	if (!/^\d+$/.test(songId)) return false;
+	const target = Array.from(document.querySelectorAll('footer button, footer a, footer [role="button"]'))
+		.find((button) => /comment|评论/i.test(getElementDescriptor(button)));
+	if (target) {
+		closeRnpLyricPage();
+		if (invokeReactJumpHandler(target) || clickDomElement(target, getElementCenterPoint(target))) return true;
+	}
+	// Song detail includes the comments when a client has no minibar shortcut.
+	return navigateWithinApp(`#/m/song/?id=${songId}`);
+};
+
 const appendLineText = (container, label, className = '') => {
 	const text = document.createElement('span');
 	text.textContent = label;
@@ -1687,6 +1700,8 @@ const updateV3LyricPageInfo = () => {
 			}
 		});
 	}
+	const commentsButton = page.querySelector('.rnp-info-comments-button');
+	if (commentsButton) commentsButton.disabled = !/^\d+$/.test(info.songId);
 	const headerName = page.querySelector('.g-singlec-hd .wrap .name');
 	const headerLyric = page.querySelector('.g-singlec-hd .wrap .lyric');
 	const titleInner = page.querySelector('.title .name .name-inner');
@@ -2473,6 +2488,9 @@ const createV3LyricPage = () => {
 											<div class="info">
 												<div class="alias"></div>
 												<ul class="playfrom"></ul>
+												<button type="button" class="rnp-info-comments-button" title="查看评论" aria-label="查看评论" disabled>
+													<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-6 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M7 9h10M7 13h7"/></svg>
+												</button>
 												<button type="button" class="rnp-info-more-button" title="更多" aria-label="更多"></button>
 											</div>
 										</div>
@@ -2522,6 +2540,10 @@ const createV3LyricPage = () => {
 	view.querySelector('.rnp-info-more-button')?.addEventListener('click', (event) => {
 		suppressEventAndBlur(event);
 		openMoreFromNativeUI();
+	});
+	view.querySelector('.rnp-info-comments-button')?.addEventListener('click', (event) => {
+		suppressEventAndBlur(event);
+		openCommentsFromNativeUI();
 	});
 	syncRnpWindowControlState();
 
