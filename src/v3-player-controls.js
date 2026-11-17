@@ -24,7 +24,7 @@ import { createPortal } from 'react-dom';
 import { ProgressbarPreview } from './progressbar-preview.js';
 import { useRnpLyricPageOpen } from './rnp-page-state.js';
 import { V3Slider } from './v3-slider.js';
-import { getCurrentVolumeFromPlayer, getVolumeFromEventArgs, setPlayerVolume } from './player-volume.js';
+import { getCurrentVolumeFromPlayer, getVolumeFromEventArgs, setPlayerVolume, subscribePlayerVolume } from './player-volume.js';
 
 const useEffect = React.useEffect;
 const useMemo = React.useMemo;
@@ -675,7 +675,7 @@ export function V3PlayerControls(props) {
 		};
 
 		const onVolumeChange = (...args) => {
-			const nextVolume = getVolumeFromEventArgs(...args) ?? getCurrentVolumeFromPlayer();
+			const nextVolume = getCurrentVolumeFromPlayer() ?? getVolumeFromEventArgs(...args);
 			if (nextVolume !== null && !isVolumeDraggingRef.current) {
 				setVolume(nextVolume);
 			}
@@ -687,7 +687,8 @@ export function V3PlayerControls(props) {
 		appendRegisterCall('Volume', 'audioplayer', onVolumeChange);
 		window.addEventListener('storage', syncVolumeState);
 		window.addEventListener('rnp-volume-changed', onVolumeChange);
-		const volumeSyncTimer = window.setInterval(syncVolumeState, 700);
+		const unsubscribeVolume = subscribePlayerVolume(syncVolumeState);
+		const volumeSyncTimer = unsubscribeVolume ? null : window.setInterval(syncVolumeState, 700);
 
 		return () => {
 			removeRegisterCall('PlayState', 'audioplayer', onPlayStateChange);
@@ -696,7 +697,8 @@ export function V3PlayerControls(props) {
 			removeRegisterCall('Volume', 'audioplayer', onVolumeChange);
 			window.removeEventListener('storage', syncVolumeState);
 			window.removeEventListener('rnp-volume-changed', onVolumeChange);
-			window.clearInterval(volumeSyncTimer);
+			unsubscribeVolume?.();
+			if (volumeSyncTimer !== null) window.clearInterval(volumeSyncTimer);
 		};
 	}, [pageOpen]);
 
